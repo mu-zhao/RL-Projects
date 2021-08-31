@@ -1,4 +1,11 @@
 {
-    "python.linting.pylintEnabled": true,
-    "python.linting.enabled": true
+    "python.linting.pylintEnabled": false,
+    "python.linting.enabled": true,
+    "cSpell.ignoreWords": [
+        "deque",
+        "fout",
+        "maps",
+        "nargs"
+    ],
+    "python.linting.flake8Enabled": true
 }
