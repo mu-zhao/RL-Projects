@@ -3,16 +3,19 @@ import logging
 import argparse
 from collections import deque
 
+import numpy as np
+
 logger = logging.getLogger(__name__)
 
 BASE_DIR = "RaceTrack/data/maps"
 
 
-class TrackMap:
-    def __init__(self, map_id):
-        self.track_list = []
-        self.start_positions = set()
-        self.end_positions = set()
+class SquareMap:
+    def __init__(self, map_id, grid_size=100):
+        self.gold = {}
+        self.marsh = set()
+        self.start_location = set()
+        self.end_location = set()
         self.map_id = map_id
 
     def gen_map(self, pos_list):
@@ -70,11 +73,14 @@ class TrackMap:
 def main():
     parser = argparse.ArgumentParser(description="Arguments for map \
                                       and configration generation")
-    parser.add_argument('-C', '--pos-list', action='append', nargs='+',
-                        type=int, required=True, help='track coordinates')
-    parser.add_argument('-S', '--start-location', action='append', nargs='+',
+    parser.add_argument('-G', '--gold', action='append', nargs='+',
+                        type=int, required=True, help="reward coordinates and\
+                        mean and std for normal distribution")
+    parser.add_argument('-M', '--marsh', action='append', nargs='+',
+                        type=int, required=True, help='cliff coordinates')
+    parser.add_argument('-W', '--windy', action='append', nargs='+',
                         type=int, required=True, help='start coordinates')
-    parser.add_argument('-E', '--end-location', action='append', nargs='+',
+    parser.add_argument('-E', '--endpoints', action='append', nargs='+',
                         type=int, required=True, help='end coordinates')
     parser.add_argument('--map-id', required=True)
 
@@ -82,9 +88,9 @@ def main():
     if unknown_args:
         logger.warning("Unknown args ignored:{}".format(unknown_args))
 
-    track_map = TrackMap(args.map_id)
-    track_map.gen_map(args.pos_list)
-    track_map.gen_config(args.start_location, args.end_location)
+    track_map = SquareMap(args.map_id)
+    track_map.gen_map(args.gold,args.marsh,args.windy,args.endpoints)
+   
 
     if track_map.validate():
         track_map.save()
