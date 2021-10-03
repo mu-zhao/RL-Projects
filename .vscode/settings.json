@@ -2,10 +2,18 @@
     "python.linting.pylintEnabled": false,
     "python.linting.enabled": true,
     "cSpell.ignoreWords": [
+        "algo",
+        "algos",
         "deque",
         "fout",
         "maps",
-        "nargs"
+        "mces",
+        "nargs",
+        "opmc",
+        "rl"
     ],
-    "python.linting.flake8Enabled": true
+    "python.linting.flake8Enabled": true,
+    "cSpell.words": [
+        "inplace"
+    ]
 }
