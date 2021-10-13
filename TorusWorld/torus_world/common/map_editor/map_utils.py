@@ -87,5 +87,5 @@ class TorusMap(CommonUtils):
     return loc in self._endzone
     
   def save(self, path):
-    self.save(path)
+    self.save_json(path)
     logger.info(f"Flat Torus {self._map_id} Saved!")

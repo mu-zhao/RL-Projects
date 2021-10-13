@@ -6,15 +6,17 @@ from functools import wraps
 import pathlib
 from TorusWorld.torus_world.common.map_editor.map_utils import TorusMap
 from TorusWorld.torus_world.common.params_editor.params_utils import Params
+from TorusWorld.torus_world.rl_algos.monte_carlo import MCES
 import numpy as np
 
 _CONTROL_UNIT = np.array([[0,0],[0,1],[1,0],[0,-1],[-1,0]])
 
-ALGO_DICT = {}
+ALGO_DICT = {'MCES':MCES}
 
-_DATA_DIR = ''
+_DATA_DIR = 'TorusWorld/data/algos'
 
-_BASE_DIR=""
+_BASE_DIR="TorusWorld/data"
+
 def is_json(path):
   assert os.path.isfile(path)
   if path.split('.')[-1] == 'json':
@@ -39,9 +41,9 @@ class CommonUtils:
     if is_json(path):
       self = self.read_json(path)
   
-  def save_json(self, path, json_map):
+  def save_json(self, path):
     with open(path, 'w') as f:
-      json.dump(json_map, f)
+      json.dump(self.__dict__, f)
 
   def read_json(self, path):
     with open(path) as mf:
