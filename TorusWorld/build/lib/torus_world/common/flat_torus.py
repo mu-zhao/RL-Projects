@@ -1,91 +1,65 @@
 import logging
 import os
 import json
-
+from TorusWorld.torus_world.common.common_utils import ConfigInfo
+from TorusWorld.torus_world.common.episode_utils import Episode
+from rl_algos import monte_carlo
 import numpy as np
 
 logger = logging.getLogger(__name__)
 
-
 class FlatTorus:
-    def __init__(self, map, config, method):
-        self.config = config
-        self.map = map
-        self.method = method
-        self.params = {}
-        self.episodes = 1000 * config_dict['kepisodes']
-        self.size = map_dict['size']
-        self.end = set(map_dict['end_loc'])
-        self.config['map_id'] = map_dict['map_id']
-        self.speed_limit = config_dict['speed_limit']
-        self.reward = map_dict['reward']
-        self.drift = map_dict['drift']
-        # This is just easier on the memory, not necessary.
-        self.drift_limit = map_dict['drift_config'][0]
+  def __init__(self, world_config):
+    self.config = world_config
+    self._num_episodes = self.config.params.episodes
+    self._cur_episode = Episode(self.config.params, self.config.torus_map)
+
+  def run_episode(self, train=True):
+    self._cur_episode.reset(self._algo, train)
+    while True:
+      if self._cur_episode.episode_end:
+        if not train:
+          return self._cur_episode.reward
+      self._cur_episode.update(self._algo, train)
+
+  def test(self, test_gap=100, num_runs=100):
+    self._return_record = np.zeros(self._num_episodes//test_gap)
+    while self._episode <self._num_episodes:
+      if self._episode > 0 and self._episode % test_gap == 0:  # testing
+          total_run_return = 0
+          for _ in range(num_runs):
+            total_run_return += self.run_episode(False)
+          self._return_record[self._episode//test_gap] = total_run_return / num_runs
+      self.run_episode() # training
+    return self._return_record
+
+  def add_train_episodes(self,num_episodes):
+      self._num_episodes += num_episodes
+      self.config.params.episodes += num_episodes
+
+  def save(self, path):
+    self.config.save(path)
+
+  def read(self, path):
+    self.config.read()
+
+  @property
+  def record(self):
+    return self._return_record
+
+
+
+
+
         
 
-        self.params['cost_record'] = np.array(self.config['kepisodes'])
-        self.control_unit = self._get_control_unit
-        self.drift_unit = np.arange(-self.drift_limit, self.drift_limit)
 
-    @property
-    def _get_drift(self):
-        drift =
-        for i in range(self.size[0]):
-            for j in range(self.size[1]):
-                if self.drift[i][j]:
-                    self.drift[i][j] = np.array(self.drift[i][j])
-    @property
-    def _get_control_unit(self):
-        return np.array(self.config['control_unit'])
 
-    def reset(self):
-        self.loc = np.zeros(2, dtype=int)
-        self.v = np.zeros(2, dtype=int)
-        self.kinetic = 0
-        self.cost = 0
-        self.discount = 1
-        self.step = 0
 
-    def update(self):
-        self.config['method'].update()
 
-    def decision(self):
-        control = self.config['method'].control()
-        self.v += self.control_unit[control]
-        self.v[self.v > self.speed_limit] = self.speed_limit
-        self.v[self.v < -self.speed_limit] = -self.speed_limit
-        cur_kinetic = np.sum(self.v**2)
-        self.loc += self.v + self.drift_effect
-        self.discount *= self.config['discount']
-        self.cost += self.random_reward*self.discount - 1 - max(
-                        0, cur_kinetic - self.kinetic)
-        self.kinetic = cur_kinetic
-        self.step += 1
 
-    def _is_termination(self, step_limit=100000):
-        if self.step < step_limit and self.loc not in self.end:
-            return False
-        if self.step > step_limit:
-            logger.warning(f"episode {self.episode} didn't reach end")
-        if self.episode % 1000 == 0:
-            self.cost_record[self.episode//1000] = self.cost
-        return True
 
-    @property
-    def drift_effect(self):
-        x, y = self.loc
-        if self.drift[x][y]:
-            return np.random.choice(self.drift_unit, 2, p=self.drift[x][y])
-        return np.array((0, 0))
 
-    @property
-    def random_reward(self):
-        x, y = self.loc
-        if self.reward[x][y]:
-            mu, sig = self.reward[x][y]
-            return np.random.normal(mu, sig)
-        return 0
 
     def read(self, dir):
         config_path = f"{dir}/config.json"

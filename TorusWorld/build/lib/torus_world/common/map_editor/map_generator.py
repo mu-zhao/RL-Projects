@@ -3,16 +3,14 @@ import argparse
 import logging
 import os
 
-from map_utils import Map
+from map_utils import TorusMap
 
 _BASE_DIR = "TorusWorld/data/maps"
 logger = logging.getLogger(__name__)
 
-def _random_generate_map(map_id, size, end_loc, reward_config, drift_config,
+def random_generate_map(map_id, size, end_loc, reward_config, drift_config,
                          path):
-    if not os.path.exists(path):
-        os.makedirs(path, exist_ok=False)
-    map = Map(map_id, size, end_loc)
+    map = TorusMap(map_id=map_id, size=size, endzone=end_loc)
     map.generate_drift(drift_config)
     map.generate_reward(reward_config)
     logger.info('successfully generate map')
@@ -37,7 +35,7 @@ def main():
     args, unknown_args = parser.parse_known_args()
     if unknown_args:
         logger.warning("Unknown args ignored:{}".format(unknown_args))
-    _random_generate_map(args.map_id, args.size, args.end_loc,
+    random_generate_map(args.map_id, args.size, args.end_loc,
                         args.reward_config, args.drift_config, args.file_path)
 
 

@@ -9,7 +9,6 @@ setup(
     url = 'https://github.com/mu-zhao',
     author = 'Mu Zhao',
     author_email = 'muzhao.pku@gmail.com',
-    packages=['common','rl_methods','common.config_editor','common.map_editor'],
-    package_dir={'':'torus_world', },
+    packages=find_packages(),
     platforms = 'any',
 )

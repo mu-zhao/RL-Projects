@@ -1,10 +1,10 @@
 """Utilities of the map class"""
 import json
 import logging
-from types import SimpleNamespace
 
 import numpy as np
 
+from common.commom_utils import CommonUtils
 
 logger = logging.getLogger(__name__)
 
@@ -21,15 +21,20 @@ def _filter(size, end_loc):
   assert endzone, "valid endzone is empty!"
   return endzone
 
-class Map:
-  def __init__(self, map_id, size, endzone):
-    self.map_id = map_id
-    self.size = size
-    self.endzone = _filter(size, endzone)
+class TorusMap(CommonUtils):
+  def __init__(self, **kwargs):
+    if 'path' in kwargs:
+      super().__init__(kwargs['path'])
+    else:
+      self._map_id = kwargs["map_id"]
+      self._size = kwargs["size"]
+      self._endzone = _filter(kwargs["size"], kwargs["endzone"])
+    self._reward = {}
+    self._drift = {}
     
   def generate_drift(self, drift_config):
-    self.drift_limit = drift_config[0]
-    self.drift = {}
+    drift_limit = drift_config[0]
+    self._drift_unit = list(range(-drift_limit, drift_limit))
     size = 2 * self.drift_limit + 1
     drift_prob = drift_config[1]
     for i in range(self.size[0]):
@@ -40,30 +45,47 @@ class Map:
             self.drift[(i,j)] = list(local_drift_dist)
 
   def generate_reward(self, reward_config):
-    self.reward = {}
     mu, var_limit, reward_prob = reward_config
     assert var_limit > 0, "variance is not positive."
     for i in range(self.size[0]):
       for j in range(self.size[1]):
         if np.random.uniform() < reward_prob:
-          self.reward[(i,j)] = [np.random.normal(mu, 1),
-                                np.random.uniform(var_limit)]
+          self._reward[(i,j)] = [np.random.normal(mu, 1),
+                                 np.random.uniform(var_limit)]
 
-  def editor():
 
-logger.info(f"Flat Torus {self.map_id} Saved!")
+  @property
+  def size(self):
+    return self._size
+
+  @property
+  def map_id(self):
+    return self._map_id
+
+  @property
+  def endzone(self):
+    return self._endzone
+  
+  @endzone.setter
+  def endzone(self, new_endzone):
+    self._endzone = _filter(self._size, new_endzone)
+
+
+  def drift_effect(self, loc):
+    if loc in self._drift:
+      return np.random.choice(self._drift_unit,
+                              2, p=self.drift[loc])
+    return np.array((0, 0))
+
+  def random_reward(self, loc):
+    if loc in self._reward:
+      mu, sig = self._reward(loc)
+      return np.random.normal(mu, sig)
+    return 0
+
+  def is_end(self, loc):
+    return loc in self._endzone
     
-
-
-
-
-
-
-   
-    
- 
-    
-    path = f"{_BASE_DIR}/{map_id}.json"
-    with open(path, 'w') as fs:
-        json.dump(map_dict, fs)
-    
+  def save(self, path):
+    self.save_json(path)
+    logger.info(f"Flat Torus {self._map_id} Saved!")
