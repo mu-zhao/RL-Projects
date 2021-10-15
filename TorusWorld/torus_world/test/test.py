@@ -1,5 +1,5 @@
 #%%
-from common.map_editor import random_generate_map
+from torus_world.common.map_editor.map_utils import random_generate_map
 #%%
 map_id = '12'
 size = [30, 20]

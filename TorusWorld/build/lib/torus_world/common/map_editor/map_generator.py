@@ -8,13 +8,7 @@ from map_utils import TorusMap
 _BASE_DIR = "TorusWorld/data/maps"
 logger = logging.getLogger(__name__)
 
-def random_generate_map(map_id, size, end_loc, reward_config, drift_config,
-                         path):
-    map = TorusMap(map_id=map_id, size=size, endzone=end_loc)
-    map.generate_drift(drift_config)
-    map.generate_reward(reward_config)
-    logger.info('successfully generate map')
-    map.save(path)
+
 
 def main():
     parser = argparse.ArgumentParser(description="Arguments for map \
