@@ -2,6 +2,8 @@
     "python.linting.pylintEnabled": false,
     "python.linting.enabled": true,
     "cSpell.ignoreWords": [
+        "MCES",
+        "OnPolicyMC",
         "algo",
         "algos",
         "deque",

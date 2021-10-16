@@ -1,7 +1,8 @@
 
 import numpy as np
 
-from common.algo_utils import Algo, AlgoParameter
+from TorusWorld.torus_world.common.algo_editor.algo_utils import(
+    Algo, AlgoParameter)
 
 
 class MonteCarlo(Algo):
