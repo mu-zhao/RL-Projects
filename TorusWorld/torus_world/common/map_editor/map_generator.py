@@ -1,13 +1,11 @@
 """Generate maps for flat torus"""
 import argparse
 import logging
-import os
 
-from map_utils import TorusMap
+from map_utils import random_generate_map
 
 _BASE_DIR = "TorusWorld/data/maps"
 logger = logging.getLogger(__name__)
-
 
 
 def main():

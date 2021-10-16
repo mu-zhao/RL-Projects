@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 1.0
 Name: torus-world
 Version: 0.0.1
 Summary: a library to assist adventures in a flat torus world
@@ -6,8 +6,6 @@ Home-page: https://github.com/mu-zhao
 Author: Mu Zhao
 Author-email: muzhao.pku@gmail.com
 License: MIT License
+Description: UNKNOWN
 Keywords: reinforcement learning
 Platform: any
-
-UNKNOWN
-

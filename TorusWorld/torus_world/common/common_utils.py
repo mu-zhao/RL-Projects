@@ -1,118 +1,150 @@
-#%%
+""" We use two data types for data storage: json for general info
+    and npy for algo paramters.
+"""
 import json
-import logging 
-import os
+import logging
 from functools import wraps
-import pathlib
-from TorusWorld.torus_world.common.map_editor.map_utils import TorusMap
-from TorusWorld.torus_world.common.params_editor.params_utils import Params
-from TorusWorld.torus_world.rl_algos.monte_carlo import MCES
+from pathlib import Path
+
 import numpy as np
 
-_CONTROL_UNIT = np.array([[0,0],[0,1],[1,0],[0,-1],[-1,0]])
+logger = logging.getLogger(__name__)
 
-ALGO_DICT = {'MCES':MCES}
+_CONTROL_UNIT = np.array([[0, 0], [0, 1], [1, 0], [0, -1], [-1, 0]])
 
-_DATA_DIR = 'TorusWorld/data/algos'
+#  path are all Path objects
+_json_file_format = {'params', 'config', 'torus_map', 'hyper_parameter'}
 
-_BASE_DIR="TorusWorld/data"
+
+def gen_path(key, dir, *args):
+    if key in _json_file_format:
+        if args:
+            file_name = Path(key) / f"{args}.json"
+        else:
+            file_name = Path(f"{key}.json")
+        return dir / file_name
+    return dir / f"{key}_{args}"  # key is algo class name, args is world id.
+
 
 def is_json(path):
-  assert os.path.isfile(path)
-  if path.split('.')[-1] == 'json':
-    return True
-  return False 
+    if path.name.split('.')[-1] == 'json':
+        return True
+    return False
+
 
 def flatten(*args):
-  return tuple([t for l in args for t in l ])
+    return tuple([t for ls in args for t in ls])
 
 
-def check_dir(func):
-  @wraps(func)
-  def check_dir_first(dir, *args, **kwargs):
-    pathlib.Path(dir).mkdir(parents=True, exist_ok=True)
-    return func(dir, *args, **kwargs)
-  return check_dir_first
+def change_keys(old_dict, size, to_int):
+    new_dict = {}
+    for k, v in old_dict.items():
+        if to_int:
+            key = k[0]*size[0] + k[1]
+        else:
+            key = (int(k) // size[0], int(k) % size[0])
+        new_dict[key] = v
+    return new_dict
 
-# need to check if file already exits!
 
-class CommonUtils:
-  def __init__(self, path):
-    if is_json(path):
-      self = self.read_json(path)
-  
-  def save_json(self, path):
+def naming_rule(path):
+    name = path.name.split('.')[0]
+    return name.split('_')[-1].isnumeric()
+
+
+def change_name(path):
+    file, dir = path.name, path.parent
+    if path.is_file():
+        file, file_ex = file.split('.')
+    file_name_elem = file.split('_')
+    file_name_elem[-1] = str(1 + int(file_name_elem[-1]))
+    new_file = '_'.join(file_name_elem)
+    if path.is_file():
+        new_file += '.' + file_ex
+    return dir / new_file
+
+
+def check_path(action):
+    def decorator(func):
+        if action == 'read':
+            @wraps(func)
+            def check_path_first(path, *args):
+                assert path.exists(), 'no such file'
+                return func(path, *args)
+            return check_path_first
+
+        @wraps(func)
+        def check_path_first(path, overwrite, *args):
+            assert naming_rule(path)
+            if not overwrite and path.exists():
+                logger.warning(f"File {path} already exists!")
+                while path.exists():
+                    path = change_name(path)
+                logger.warning(f"New file name {path.name} created!")
+            path.parent.mkdir(parents=True, exist_ok=True)
+            return func(path, overwrite, *args)
+        return check_path_first
+    return decorator
+
+
+@check_path('save')
+def _save_json(path, overwrite, json_dict):
     with open(path, 'w') as f:
-      json.dump(self.__dict__, f)
+        json.dump(json_dict, f)
 
-  def read_json(self, path):
+
+@check_path('read')
+def _read_json(path):
     with open(path) as mf:
-      json_dict = json.load(mf)
+        json_dict = json.load(mf)
     return json_dict
-  
 
 
-  @check_dir
-  def save_to_np(self, dir, obj_class, obj_info):
-    for key in obj_info.__dict__:
-      np_path = f"{dir}/{obj_class}/{key}.npy"
-      np.save(np_path,getattr(obj_info,key))
+@check_path('save')
+def _save_np(file_path, overwrite, np_array):
+    np.save(file_path, np_array)
 
-  
-  def load_file(self, path):
-    if is_json(path):
-      return self.read_json(path)
-    file_name = path.split('/')[-1]
+
+@check_path('read')
+def _read_np(path):
+    file_name = path.name
     key = file_name.split('.')[0]
     return key, np.load(path)
 
-  def load(self,path):
-    if os.path.isfile(path):
-      obj_dict = self.load_file(path)
-    else:
-      obj_dict = {}
-      for file_path in os.listdir(path):
-        k, v = self.load_file(file_path)
-        obj_dict[k] = v
-    return self.make_obj(obj_dict)
 
-  def make_obj(self, obj_dict):
-    class _NewClass(self.__class__):
-      def __init__(self, class_dict):
-        self.__dict__ = class_dict
-    return _NewClass(obj_dict)
+class CommonUtils:
+    def __init__(self, **kwargs):
+        if 'path' in kwargs:
+            self = self.load(kwargs['path'])
 
-   
+    def save(self, path, overwrite=False):
+        if is_json(path):
+            _save_json(path, overwrite, self.__dict__)
+        else:
+            for key in self.__dict__:
+                file_name = key+".npy"
+                file_path = path / file_name
+                np_array = self.__dict__[key]
+                _save_np(file_path, overwrite, np_array)
 
-class WorldConfig:
+    def load(self, path):
+        obj_dict = {}
+        if is_json(path):
+            obj_dict = _read_json(path)
+        else:
+            for file_path in path.glob('/*.npy'):
+                k, v = _read_np(file_path)
+                obj_dict[k] = v
+        return self.__dict__.update(obj_dict)
 
-  def __init__(self, world_id, dir=_BASE_DIR):
-    self._path = f"{dir}/config/{world_id}.json"
-    self._world_id = world_id
-    self.config_info = CommonUtils(self._path)
-    self.params = Params(f"{dir}/params/{self.config_info['params']}.json")
-    self.torus_map = TorusMap(f"{dir}/params/{self.config_info['torus_map']}.json")
-    rl_algo = ALGO_DICT[self.config_info['algo_id']](self.params, self.torus_map)
-    self.algo = rl_algo.load(self.config_info['algo_path'])
-  
-  def save(self):
-    self.config.save(self._path)
-
-  def read(self, world_id):
-    self = WorldConfig(world_id)
-
-  
 
 class CommonInfo():
-  def __init__(self, params, torus_map):
-    self._size = np.array(torus_map.size)
-    self._speed_limit = params.speed_limit
-    self._discount_factor = params.discount
-    self._step_limit = params.step_limit
-    self._time_cost = params.time_cost
-    self._punitive_cost = params.punitive_cost 
-    self._control_unit = _CONTROL_UNIT
-    self._torus_map = torus_map
-
-
-
+    def __init__(self, params, torus_map):
+        self._size = np.array(torus_map.size)
+        self._speed_limit = params.speed_limit
+        self._discount_factor = params.discount
+        self._step_limit = params.step_limit
+        self._time_cost = params.time_cost
+        self._punitive_cost = params.punitive_cost
+        self._control_unit = _CONTROL_UNIT
+        self._torus_map = torus_map
