@@ -1,16 +1,20 @@
 
 import numpy as np
+from common.common_utils import ParameterValues
 
-from common.algo_utils import Algo, AlgoParameter
+from common.algo_utils import Algo
 
 
 class MonteCarlo(Algo):
     def __init__(self, *args, **kwargs):
+        """ base algo class
+            hyper random_init, trained_episodes
+        """
         super().__init__(*args, **kwargs)
         self.state_action_shape = list(self._size)+[
-            self._speed_limit] * 2 + [5]
-        random_start = self.hyper_parameters.get('random_init', False)
-        self.algo_parameters.state_action = AlgoParameter(
+            2 * self._speed_limit + 1] * 2 + [5]
+        random_start = self.hyper_parameters.random_init
+        self.algo_parameters.state_action = ParameterValues(
             self.state_action_shape, random_start)
         return_shape = self.state_action_shape + [2]
         self._return = np.zeros(return_shape)
@@ -37,14 +41,16 @@ class MonteCarlo(Algo):
                     state_action][0]
                 self.algo_parameters.state_action.update_prediction(
                     state_action, mean_return)
+            self._first_visit = {}
 
 
 class MCES(MonteCarlo):
     """ Monte Carlo with Exploring Starts
+    Hyper: random_init, exploring_start
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._exploration = self.hyper_parameters['exploring start']
+        self._exploration = self.hyper_parameters.exploring_start
 
     def initial_state_action(self):
         is_random = np.random.unifrom() < self._exploration
@@ -53,10 +59,14 @@ class MCES(MonteCarlo):
 
 class OnPolicyMC(MonteCarlo):
     """On policy first visit Monte Carlo
+       hyper : random_init, exploring
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._exploration = self.hyper_parameters['exploring']
+        self._exploration = self.hyper_parameters.exploring
+
+    def initial_state_action(self):
+        return super().initial_state(False), super().initial_action(False)
 
     def control(self, state):
         if np.random.uniform() < self._exploration:

@@ -7,16 +7,6 @@ logger = logging.getLogger(__name__)
 
 
 class Params(CommonUtils):
-    def __init__(self, **kwargs):
-        if 'path' in kwargs:
-            super().__init__(kwargs['path'])
-        else:
-            self._params_id = kwargs['params_id']
-            self._episodes = kwargs["episodes"]
-            self.discount_factor = kwargs["discount_factor"]
-            self._step_limit = kwargs["step_limit"]
-            self.time_cost = kwargs["time_cost"]
-            self._punitive_cost = kwargs["punitive_cost"]
 
     @property
     def time_cost(self):
@@ -26,6 +16,15 @@ class Params(CommonUtils):
     def time_cost(self, time_cost):
         assert time_cost > 0, 'time_cost is not positive'
         self._time_cost = time_cost
+
+    @property
+    def speed_limit(self):
+        return self._speed_limit
+
+    @speed_limit.setter
+    def speed_limit(self, speed):
+        assert isinstance(speed, int) and speed > 0
+        self._speed_limit = speed
 
     @property
     def step_limit(self):
@@ -53,15 +52,22 @@ class Params(CommonUtils):
         assert 0 <= discount_factor <= 1, 'discount factor not between 0 and 1'
         self._discount_factor = discount_factor
 
+    @property
+    def punitive_cost(self):
+        return self._punitive_cost
+
+    @punitive_cost.setter
+    def punitive_cost(self, cost):
+        assert cost > 0
+        self._punitive_cost = cost
+
     def save(self, path, overwrite):
         super().save(path, overwrite)
         logger.info(f"Parameters {self._params_id} Saved!")
 
 
-def generate_params(params_id, episodes, discount_factor, step_limit,
-                    time_cost, punitive_cost, path):
-    params = Params(params_id=params_id, episodes=episodes,
-                    discount_factor=discount_factor, step_limit=step_limit,
-                    time_cost=time_cost, punitive_cost=punitive_cost)
-    logger.info(f"successfully generate parameters {params_id}")
+def generate_params(path, **kwargs):
+    params = Params()
+    params.__dict__.update(kwargs)
+    logger.info(f"successfully generate parameters {params.params_id}")
     params.save(path, overwrite=False)

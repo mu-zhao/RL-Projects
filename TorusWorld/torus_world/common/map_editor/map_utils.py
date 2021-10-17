@@ -24,19 +24,12 @@ def _filter(size, end_loc):
 
 class TorusMap(CommonUtils):
     def __init__(self, **kwargs):
-        if 'path' in kwargs:
-            super().__init__(kwargs['path'])
-            self._convert(False)
-        else:
-            self._map_id = kwargs["map_id"]
-            self._size = kwargs["size"]
-            self._endzone = _filter(kwargs["size"], kwargs["endzone"])
-            self._reward = {}
-            self._drift = {}
+        super().__init__(**kwargs)
+        self._convert(False)
 
     def generate_drift(self, drift_config):
         drift_limit = drift_config[0]
-        self._drift_unit = list(range(-drift_limit, drift_limit))
+        self._drift_unit = list(range(-drift_limit, drift_limit+1))
         drift_prob = drift_config[1]
         for i in range(self.size[0]):
             for j in range(self.size[1]):
@@ -52,7 +45,7 @@ class TorusMap(CommonUtils):
             for j in range(self.size[1]):
                 if np.random.uniform() < reward_prob:
                     self._reward[(i, j)] = [np.random.normal(mu, 1),
-                                            np.random.uniform(var_limit)]
+                                            np.random.uniform(0, var_limit)]
 
     @property
     def size(self):
@@ -71,19 +64,19 @@ class TorusMap(CommonUtils):
         self._endzone = _filter(self._size, new_endzone)
 
     def drift_effect(self, loc):
-        if loc in self._drift:
+        if tuple(loc) in self._drift:
             return np.random.choice(self._drift_unit,
-                                    2, p=self.drift[loc])
+                                    size=2, p=self._drift[tuple(loc)])
         return np.array((0, 0))
 
     def random_reward(self, loc):
-        if loc in self._reward:
-            mu, sig = self._reward(loc)
+        if tuple(loc) in self._reward:
+            mu, sig = self._reward[tuple(loc)]
             return np.random.normal(mu, sig)
         return 0
 
-    def is_end(self, loc):
-        return loc in self._endzone
+    def get_endzone(self):
+        return {tuple(loc) for loc in self._endzone}
 
     def save(self, path, overwrite):
         self._convert()
@@ -91,14 +84,22 @@ class TorusMap(CommonUtils):
         logger.info(f"Flat Torus {self._map_id} Saved!")
 
     def _convert(self, to_int=True):
-        self._reward = change_keys(self._reward, self._size, to_int)
-        self._drift = change_keys(self._drift, self._size, to_int)
+        if hasattr(self, '_reward'):
+            self._reward = change_keys(self._reward, self._size, to_int)
+        if hasattr(self, '_drift'):
+            self._drift = change_keys(self._drift, self._size, to_int)
 
 
-def random_generate_map(map_id, size, end_loc, reward_config, drift_config,
+def random_generate_map(map_id, size, endzone, reward_config, drift_config,
                         path):
-    map = TorusMap(map_id=map_id, size=size, endzone=end_loc)
+    map = TorusMap()
+    map._map_id = map_id
+    map._size = size
+    map._endzone = _filter(size, endzone)
+    map._reward = {}
+    map._drift = {}
     map.generate_drift(drift_config)
     map.generate_reward(reward_config)
-    logger.info('successfully generate map')
+    logger.warning('successfully generate map')
+
     map.save(path, overwrite=False)

@@ -13,4 +13,4 @@
 
 - Each step has a time cost $C$.
 
-- The goal is to find a policy to get to the end location from the start location with minimal cost. 
+- The goal is to find a policy to get to the end location from the start location with minimal cost.

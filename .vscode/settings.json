@@ -8,15 +8,19 @@
         "algos",
         "deque",
         "fout",
+        "jformat",
         "kargs",
         "maps",
         "mces",
         "nargs",
         "opmc",
+        "pdir",
+        "ppath",
         "rl"
     ],
     "python.linting.flake8Enabled": true,
     "cSpell.words": [
+        "arange",
         "inplace"
     ]
 }

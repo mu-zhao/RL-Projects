@@ -8,22 +8,24 @@ from pathlib import Path
 
 import numpy as np
 
+
 logger = logging.getLogger(__name__)
 
-_CONTROL_UNIT = np.array([[0, 0], [0, 1], [1, 0], [0, -1], [-1, 0]])
+_CONTROL_UNIT = np.array([[0, 0], [0, 1], [1, 0], [0, -1], [-1, 0]], dtype=int)
 
 #  path are all Path objects
-_json_file_format = {'params', 'config', 'torus_map', 'hyper_parameter'}
+_json_file_format = {'params': 'params', 'config': 'configs',
+                     'torus_map': 'maps'}
 
 
-def gen_path(key, dir, *args):
-    if key in _json_file_format:
-        if args:
-            file_name = Path(key) / f"{args}.json"
-        else:
-            file_name = Path(f"{key}.json")
-        return dir / file_name
-    return dir / f"{key}_{args}"  # key is algo class name, args is world id.
+def gen_path(key, pdir, file_id, jformat=_json_file_format):
+    if key in jformat:
+        file_name = Path(f"{jformat[key]}/{key}_{file_id}.json")
+        return pdir / file_name
+    if key == 'hyper_parameter':
+        return pdir / "hyper_parameter.json"
+    # key is algo class name, args is world id.
+    return pdir / f"{key}/world_{file_id}"
 
 
 def is_json(path):
@@ -40,7 +42,7 @@ def change_keys(old_dict, size, to_int):
     new_dict = {}
     for k, v in old_dict.items():
         if to_int:
-            key = k[0]*size[0] + k[1]
+            key = k[0] * size[0] + k[1]
         else:
             key = (int(k) // size[0], int(k) % size[0])
         new_dict[key] = v
@@ -75,12 +77,8 @@ def check_path(action):
 
         @wraps(func)
         def check_path_first(path, overwrite, *args):
-            assert naming_rule(path)
-            if not overwrite and path.exists():
-                logger.warning(f"File {path} already exists!")
-                while path.exists():
-                    path = change_name(path)
-                logger.warning(f"New file name {path.name} created!")
+            if not overwrite:
+                assert not path.exists()
             path.parent.mkdir(parents=True, exist_ok=True)
             return func(path, overwrite, *args)
         return check_path_first
@@ -109,7 +107,37 @@ def _save_np(file_path, overwrite, np_array):
 def _read_np(path):
     file_name = path.name
     key = file_name.split('.')[0]
-    return key, np.load(path)
+    return key, np.load(path, allow_pickle=True)
+
+
+def generate_policy(self, state_action_value, epsilon):
+    policy = np.zeros_like(state_action_value) + epsilon
+    x, y, vx, vy = np.shape(state_action_value)[:4]
+    for i in range(x):
+        for j in range(y):
+            for k in range(vx):
+                for m in range(vy):
+                    action_values = state_action_value[i, j, k, m]
+                    policy[i, j, k, m, np.argmax(
+                        action_values)] = 1 - 4 * epsilon
+    return policy
+
+
+def save_obj(path, overwrite, obj_dict):
+    for key in obj_dict:
+        file_name = key+".npy"
+        file_path = path / file_name
+        np_array = obj_dict[key]
+        _save_np(file_path, overwrite, np_array)
+
+
+def load_obj(path, obj_class):
+    obj_dict = {}
+    for file_path in path.glob('*.npy'):
+        k, v = _read_np(file_path)
+        obj_dict[k] = obj_class(np.shape(v))
+        obj_dict[k].parameter = v
+    return obj_dict
 
 
 class CommonUtils:
@@ -121,30 +149,55 @@ class CommonUtils:
         if is_json(path):
             _save_json(path, overwrite, self.__dict__)
         else:
-            for key in self.__dict__:
-                file_name = key+".npy"
-                file_path = path / file_name
-                np_array = self.__dict__[key]
-                _save_np(file_path, overwrite, np_array)
+            save_obj(path, overwrite, self.__dict__)
 
     def load(self, path):
-        obj_dict = {}
         if is_json(path):
             obj_dict = _read_json(path)
         else:
-            for file_path in path.glob('/*.npy'):
-                k, v = _read_np(file_path)
-                obj_dict[k] = v
-        return self.__dict__.update(obj_dict)
+            obj_dict = load_obj(path, ParameterValues)
+        self.__dict__.update(obj_dict)
 
 
 class CommonInfo():
     def __init__(self, params, torus_map):
         self._size = np.array(torus_map.size)
         self._speed_limit = params.speed_limit
-        self._discount_factor = params.discount
+        self._discount_factor = params.discount_factor
         self._step_limit = params.step_limit
         self._time_cost = params.time_cost
         self._punitive_cost = params.punitive_cost
         self._control_unit = _CONTROL_UNIT
         self._torus_map = torus_map
+        self._endzone = torus_map.get_endzone()
+
+
+class ParameterValues:
+    def __init__(self, params_shape, random_init=True):
+        self._params_shape = params_shape
+        if random_init:
+            self.parameter = np.random.uniform(size=params_shape)
+        else:
+            self.parameter = np.zeros(params_shape)
+
+    def decision(self, state):
+        params_values = self.parameter[state]
+        arg_max_index = np.flatnonzero(params_values == params_values.max())
+        # Break tie randomly
+        return np.random.choice(arg_max_index)
+
+    def update_prediction(self, state_action, value):
+        self.parameter[state_action] = value
+
+    def change_policy(self, behavior_policy):
+        self.parameter = behavior_policy
+
+    def gen_policy(self, epsilon):
+        return generate_policy(self.parameter, epsilon)
+
+    def save(self, path, overwrite=False):
+        save_obj(path, overwrite, self.__dict__)
+
+    def load(self, path):
+        class_dict = load_obj(path, self.__class__)
+        self.__dict__.update(class_dict)

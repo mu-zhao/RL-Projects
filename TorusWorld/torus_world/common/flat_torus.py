@@ -2,7 +2,7 @@ import logging
 
 import numpy as np
 
-from episode_utils import Episode
+from common.episode_utils import Episode
 
 logger = logging.getLogger(__name__)
 
@@ -14,11 +14,13 @@ class FlatTorus:
         self._cur_episode = Episode(self.config.params, self.config.torus_map)
 
     def run_episode(self, train=True):
-        self._cur_episode.reset(self._algo, train)
+        if train:
+            self.config.algo.hyper_parameters.trained_episode += 1
+        self._cur_episode.reset(self.config.algo, train)
         while True:
             if self._cur_episode.episode_end:
                 return self._cur_episode.reward
-            self._cur_episode.update(self._algo, train)
+            self._cur_episode.update(self.config.algo, train)
 
     def evaluate_algo(self, num_runs):
         run_return = np.zeros(num_runs)
@@ -27,12 +29,16 @@ class FlatTorus:
         return run_return
 
     def train_evaluation(self, eval_gap=100, num_runs=100):
-        self._return_record = np.zeros(self._num_episodes//eval_gap, 2)
-        while self._episode < self._num_episodes:
-            if self._episode > 0 and self._episode % eval_gap == 0:
+        self._return_record = []
+        while True:
+            trained_episode = self.config.algo.hyper_parameters.trained_episode
+            if trained_episode > self._num_episodes:
+                break
+            if trained_episode > 0 and trained_episode % eval_gap == 0:
                 eval_result = self.evaluate_algo(num_runs)
                 mean, var = eval_result.mean(), eval_result.std()
-                self._return_record[self._episode//eval_gap] = mean, var
+                print(trained_episode, mean, var)
+                self._return_record.append([mean, var])
             self.run_episode()  # training
         return self._return_record
 
@@ -40,8 +46,8 @@ class FlatTorus:
         self._num_episodes += num_episodes
         self.config.params.episodes += num_episodes
 
-    def save(self, path):
-        self.config.save(path)
+    def save(self):
+        self.config.save()
 
     @property
     def record(self):
