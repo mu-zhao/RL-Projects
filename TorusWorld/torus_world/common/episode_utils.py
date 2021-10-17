@@ -2,10 +2,10 @@
 
 import logging
 
-
 import numpy as np
 
 from common.common_utils import CommonInfo, flatten
+
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,6 @@ class Episode(CommonInfo):
         self._cur_reward = 0
         self._cur_drift = np.zeros(2, dtype=int)
         self.episode_end = False
-
         if train:
             self._init_state_action(algo)
 
@@ -42,7 +41,7 @@ class Episode(CommonInfo):
         self._action = algo.control(self.state)
 
     def _update_loc(self):
-        self._cur_drift = self._torus_map.drift_effect(self._loc)
+        self._cur_drift = self.drift_effect
         self._loc += self._v + self._cur_drift
         self._loc %= self._size
         self._step += 1
@@ -64,7 +63,7 @@ class Episode(CommonInfo):
             self.episode_end = True
             logger.warning('exceeds step limit')
         else:
-            self._cur_reward = self._torus_map.random_reward(self._loc)
+            self._cur_reward = self.random_reward
         self._reward += self._cur_reward * self._discount - cost
 
     @property
@@ -78,3 +77,23 @@ class Episode(CommonInfo):
     @property
     def reward(self):
         return self._reward
+
+    @property
+    def drift_effect(self):
+        loc = tuple(self._loc)
+        if loc not in self._drift_effect:
+            return np.zeros(2, dtype=int)
+        if not self._drift_effect[loc]:
+            self._drift_effect[loc] = self._torus_map.drift_effect(
+                loc, self._buffer)
+        return self._drift_effect[loc].pop()
+
+    @property
+    def random_reward(self):
+        loc = tuple(self._loc)
+        if loc not in self._random_reward:
+            return 0
+        if not self._random_reward[loc]:
+            self._random_reward[loc] = self._torus_map.random_reward(
+                loc, self._buffer)
+        return self._random_reward[loc].pop()

@@ -10,7 +10,7 @@ from common.common_utils import CommonUtils, gen_path
 ALGO_DICT = {'MCES': MCES, 'OnPolicyMC': OnPolicyMC}
 
 
-_BASE_DIR = Path('/home/muzhao/my_vscode/RL-Projects/TorusWorld/data')
+_BASE_DIR = Path.cwd().parent / 'data'
 _ALGO_DIR = _BASE_DIR / 'algos'
 
 

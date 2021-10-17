@@ -110,24 +110,11 @@ def _read_np(path):
     return key, np.load(path, allow_pickle=True)
 
 
-def generate_policy(self, state_action_value, epsilon):
-    policy = np.zeros_like(state_action_value) + epsilon
-    x, y, vx, vy = np.shape(state_action_value)[:4]
-    for i in range(x):
-        for j in range(y):
-            for k in range(vx):
-                for m in range(vy):
-                    action_values = state_action_value[i, j, k, m]
-                    policy[i, j, k, m, np.argmax(
-                        action_values)] = 1 - 4 * epsilon
-    return policy
-
-
 def save_obj(path, overwrite, obj_dict):
     for key in obj_dict:
         file_name = key+".npy"
         file_path = path / file_name
-        np_array = obj_dict[key]
+        np_array = obj_dict[key].parameter
         _save_np(file_path, overwrite, np_array)
 
 
@@ -138,6 +125,33 @@ def load_obj(path, obj_class):
         obj_dict[k] = obj_class(np.shape(v))
         obj_dict[k].parameter = v
     return obj_dict
+
+
+class ParameterValues:
+    def __init__(self, params_shape, random_init=True):
+        self._params_shape = params_shape
+        if random_init:
+            self.parameter = np.random.uniform(size=params_shape)
+        else:
+            self.parameter = np.zeros(params_shape)
+
+    def decision(self, state):
+        params_values = self.parameter[state]
+        arg_max_index = np.flatnonzero(params_values == params_values.max())
+        # Break tie randomly
+        return np.random.choice(arg_max_index)
+
+    def update_prediction(self, state_action, value):
+        self.parameter[state_action] = value
+
+    def change_policy(self, behavior_policy):
+        self.parameter = behavior_policy
+
+    def gen_policy(self, epsilon):
+        last_axis = len(self._params_shape) - 1
+        mask = self.parameter.max(
+            axis=last_axis, keepdims=True) == self.parameter
+        return np.where(mask, 1 - 4 * epsilon, epsilon)
 
 
 class CommonUtils:
@@ -162,6 +176,7 @@ class CommonUtils:
 class CommonInfo():
     def __init__(self, params, torus_map):
         self._size = np.array(torus_map.size)
+        self._loc_num = self._size[0] * self._size[1]
         self._speed_limit = params.speed_limit
         self._discount_factor = params.discount_factor
         self._step_limit = params.step_limit
@@ -170,34 +185,8 @@ class CommonInfo():
         self._control_unit = _CONTROL_UNIT
         self._torus_map = torus_map
         self._endzone = torus_map.get_endzone()
-
-
-class ParameterValues:
-    def __init__(self, params_shape, random_init=True):
-        self._params_shape = params_shape
-        if random_init:
-            self.parameter = np.random.uniform(size=params_shape)
-        else:
-            self.parameter = np.zeros(params_shape)
-
-    def decision(self, state):
-        params_values = self.parameter[state]
-        arg_max_index = np.flatnonzero(params_values == params_values.max())
-        # Break tie randomly
-        return np.random.choice(arg_max_index)
-
-    def update_prediction(self, state_action, value):
-        self.parameter[state_action] = value
-
-    def change_policy(self, behavior_policy):
-        self.parameter = behavior_policy
-
-    def gen_policy(self, epsilon):
-        return generate_policy(self.parameter, epsilon)
-
-    def save(self, path, overwrite=False):
-        save_obj(path, overwrite, self.__dict__)
-
-    def load(self, path):
-        class_dict = load_obj(path, self.__class__)
-        self.__dict__.update(class_dict)
+        self._buffer = min(100, self._step_limit / self._loc_num)
+        self._drift_effect = {loc: torus_map.drift_effect(loc, self._buffer)
+                              for loc in torus_map.driftzone}
+        self._random_reward = {loc: torus_map.random_reward(loc, self._buffer)
+                               for loc in torus_map.rewardzone}

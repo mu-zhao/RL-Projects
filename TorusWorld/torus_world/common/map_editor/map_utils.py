@@ -63,17 +63,15 @@ class TorusMap(CommonUtils):
     def endzone(self, new_endzone):
         self._endzone = _filter(self._size, new_endzone)
 
-    def drift_effect(self, loc):
-        if tuple(loc) in self._drift:
-            return np.random.choice(self._drift_unit,
-                                    size=2, p=self._drift[tuple(loc)])
-        return np.array((0, 0))
+    def drift_effect(self, loc, size):
+        assert tuple(loc) in self._drift
+        return list(np.random.choice(
+            self._drift_unit, size=size, p=self._drift[tuple(loc)]))
 
-    def random_reward(self, loc):
-        if tuple(loc) in self._reward:
-            mu, sig = self._reward[tuple(loc)]
-            return np.random.normal(mu, sig)
-        return 0
+    def random_reward(self, loc, size):
+        assert tuple(loc) in self._reward
+        mu, sig = self._reward[tuple(loc)]
+        return list(np.random.normal(mu, sig, size=size))
 
     def get_endzone(self):
         return {tuple(loc) for loc in self._endzone}
@@ -88,6 +86,14 @@ class TorusMap(CommonUtils):
             self._reward = change_keys(self._reward, self._size, to_int)
         if hasattr(self, '_drift'):
             self._drift = change_keys(self._drift, self._size, to_int)
+
+    @property
+    def driftzone(self):
+        return set(self._drift.keys())
+
+    @property
+    def rewardzone(self):
+        return set(self._reward.keys())
 
 
 def random_generate_map(map_id, size, endzone, reward_config, drift_config,
