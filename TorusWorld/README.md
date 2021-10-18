@@ -1,6 +1,7 @@
 
 # This is the introduction for the FlatTorus game.
-
+**_If the math format doesn't render properly, you might consider using [MathJax Plugin for Github](https://chrome.google.com/webstore/detail/mathjax-plugin-for-github/ioemnmodlmafdkllaclgeombjnmnbima)_** 
+***
 ## Configuration:
 
 - This world is a flat torus, which is defined by $\mathbb{Z}/m\mathbb{Z}\times\mathbb{Z}/n\mathbb{Z}$. The world has a start location $[0,0]$ and an end location $[x,y]$

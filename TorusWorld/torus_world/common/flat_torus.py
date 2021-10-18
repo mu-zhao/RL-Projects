@@ -1,6 +1,11 @@
 import logging
+<<<<<<< HEAD
 from multiprocessing import Pool
 
+=======
+from multiprocessing import Pool, cpu_count
+from time import time
+>>>>>>> 6a766ebba24f1ff7b9d03b3316a8954644bb43aa
 import numpy as np
 
 from common.episode_utils import Episode
