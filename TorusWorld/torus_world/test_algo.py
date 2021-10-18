@@ -6,7 +6,7 @@ def main():
     world_config = WorldConfig(4)
     flat_torus = FT(world_config)
     flat_torus.add_train_episodes(200000)
-    record = flat_torus.train_evaluation(num_runs=10000,eval_gap=1000)
+    record = flat_torus.train_evaluation(num_runs=100,eval_gap=100)
     df = pd.DataFrame(record, columns=['mean', 'var'])
     df.plot()
     plt.show()
