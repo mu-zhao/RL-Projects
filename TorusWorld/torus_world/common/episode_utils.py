@@ -32,11 +32,12 @@ class Episode(CommonInfo):
         self._action = action
 
     def update(self, algo, train=True):
+        cur_state_action = self.state_action
         cost = self._update_v_and_cost()
         self._update_loc()
         self._update_reward(cost)
         if train:
-            algo.update(self.state_action, self._cur_reward, self._cur_drift,
+            algo.update(cur_state_action, self._cur_reward, self._cur_drift,
                         self._step, self.episode_end)
         self._action = algo.control(self.state)
 

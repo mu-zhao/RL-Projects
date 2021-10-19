@@ -5,6 +5,7 @@ import json
 import logging
 from functools import wraps
 from pathlib import Path
+from typing import final
 
 import numpy as np
 
@@ -140,6 +141,11 @@ class ParameterValues:
         arg_max_index = np.flatnonzero(params_values == params_values.max())
         # Break tie randomly
         return np.random.choice(arg_max_index)
+
+    def is_best_decision(self, state_action):
+        state = state_action[:2]
+        return np.max(self.parameter[state_action]) <= self.parameter[
+            state_action]
 
     def update_prediction(self, state_action, value):
         self.parameter[state_action] = value
