@@ -158,6 +158,10 @@ class ParameterValues:
         mask = self.parameter.max(
             axis=last_axis, keepdims=True) == self.parameter
         return np.where(mask, 1 - 4 * epsilon, epsilon)
+    
+    @property
+    def max_return(self, state):
+        return max(self.parameter[state])
 
 
 class CommonUtils:
