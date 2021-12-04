@@ -4,7 +4,7 @@
 ***
 ## Configuration:
 
-- This world is a flat torus, which is defined by $\mathbb{Z}/m\mathbb{Z}\times\mathbb{Z}/n\mathbb{Z}$. The world has a start location $[0,0]$ and an end location $$\{(x_i,y_i)\_}$$.
+- This world is a flat torus, which is defined by $\mathbb{Z}/m\mathbb{Z}\times\mathbb{Z}/n\mathbb{Z}$. The world has a start location $[0,0]$ and an end location $$\{(x_i,y_i)\}$$.
 
 - Each square has a stationary stochastic reward(could be negative, deterministic ones are seen as a special case), the reward can accumulate with discount factor $\gamma$.  
 
