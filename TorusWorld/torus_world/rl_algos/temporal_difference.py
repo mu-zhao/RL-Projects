@@ -2,6 +2,7 @@ from common.algo_utils import Algo
 from common.common_utils import ParameterValues
 
 class TemporalDifference(Algo):
+<<<<<<< HEAD
     def __init__(self, *args, **kwargs):
         """ base TD class
             hyper: random_init, learning_rate
@@ -42,3 +43,6 @@ class ExSarsa(Sarsa):
 class DoubleLearning(TemporalDifference):
     pass 
 
+=======
+    pass
+>>>>>>> 6d8cccaef7d838a0f9a32a933215251f0892971a
