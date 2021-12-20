@@ -8,13 +8,13 @@ logger = logging.getLogger(__name__)
 
 
 def run_episode(episode, algo, train=True):
+    # Reset episode before each run.
     episode.reset(algo, train)
     if train:
         algo.hyper_parameters.trained_episode += 1
-    while True:
-        if episode.episode_end:
-            return episode.reward
-        episode.update(algo, train)
+    while not episode.episode_end:  
+        episode.update(algo)
+    return episode.reward
 
 
 def eval_algo(episode, algo, num_runs):

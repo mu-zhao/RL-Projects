@@ -5,7 +5,7 @@ import json
 import logging
 from functools import wraps
 from pathlib import Path
-from typing import final
+import collections
 
 import numpy as np
 
@@ -35,8 +35,9 @@ def is_json(path):
     return False
 
 
-def flatten(*args):
-    return tuple([t for ls in args for t in ls])
+def flatten(x):
+    return [a for i in x for a in flatten(i)] if isinstance(
+            x, collections.abc.Iterable) else [x]
 
 
 def change_keys(old_dict, size, to_int):
@@ -143,26 +144,37 @@ class ParameterValues:
         return np.random.choice(arg_max_index)
 
     def is_best_decision(self, state_action):
-        state = state_action[:2]
-        return np.max(self.parameter[state_action]) <= self.parameter[
-            state_action]
+        state = state_action[:4]
+        return np.max(self.parameter[state]) <= self.parameter[state_action]
 
-    def update_prediction(self, state_action, value):
+    def update_prediction(self, state_action, target, learning_rate):
+        self.parameter[state_action] += learning_rate * (
+            target - self.parameter[state_action])
+    
+    def update_value(self, state_action, value):
         self.parameter[state_action] = value
 
     def change_policy(self, behavior_policy):
         self.parameter = behavior_policy
+
+    def expected_return(self, state, transition_prob):
+        return sum(self.parameter[state] * transition_prob)
+
+    def expected_return_explore(self, state, explore_rate):
+        return (sum(self.parameter[state]) * explore_rate + 
+                max(self.parameter[state]) * (1 - 5 * explore_rate))
 
     def gen_policy(self, epsilon):
         last_axis = len(self._params_shape) - 1
         mask = self.parameter.max(
             axis=last_axis, keepdims=True) == self.parameter
         return np.where(mask, 1 - 4 * epsilon, epsilon)
-    
-    @property
+
+    def reward(self, state_action):
+        return self.parameter[state_action]
+
     def max_return(self, state):
         return max(self.parameter[state])
-
 
 class CommonUtils:
     def __init__(self, **kwargs):
@@ -181,7 +193,6 @@ class CommonUtils:
         else:
             obj_dict = load_obj(path, ParameterValues)
         self.__dict__.update(obj_dict)
-
 
 class CommonInfo():
     def __init__(self, params, torus_map):

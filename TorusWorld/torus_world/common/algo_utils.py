@@ -55,5 +55,5 @@ class Algo(CommonInfo):
     def control(self, state):
         return self.algo_parameters.state_action.decision(state)
 
-    def update(self, state_action, reward, cur_drift, step, end):
+    def update(self, episode_info):
         raise NotImplementedError('Must be implemented by subclasses')
