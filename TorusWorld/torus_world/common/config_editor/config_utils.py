@@ -4,10 +4,18 @@ from common.algo_utils import HyperParameter
 
 from common.map_editor.map_utils import TorusMap
 from common.params_editor.params_utils import Params
-from rl_algos.monte_carlo import MCES, OnPolicyMC
+from rl_algos.monte_carlo import (
+    MCES, OnPolicyMC, OffPolicyMC, DiscoutingAwareIS,
+    PerDecisionMC)
+from rl_algos.temporal_difference import (
+    Sarsa, QLearning, DoubleLearning, QSigma)
 from common.common_utils import CommonUtils, gen_path
 
-ALGO_DICT = {'MCES': MCES, 'OnPolicyMC': OnPolicyMC}
+ALGO_DICT = {'MCES': MCES, 'OnPolicyMC': OnPolicyMC,
+             'OffPolicyMC': OffPolicyMC, 'Sarsa': Sarsa,
+             "DiscoutingAwareIS": DiscoutingAwareIS, "QSigma": QSigma,
+             "PerDecisionMC": PerDecisionMC, "QLearning": QLearning,
+             "DoubleLearning": DoubleLearning}
 
 
 _BASE_DIR = Path.cwd().parent / 'data'

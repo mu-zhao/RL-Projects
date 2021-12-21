@@ -34,7 +34,7 @@ class Episode(CommonInfo):
 
     def update(self, algo):
         algo.update(self)
-    
+
     def update_action(self, action):
         self.action = action
 
@@ -64,11 +64,11 @@ class Episode(CommonInfo):
 
     @property
     def state(self):
-        return tuple(flatten(self._loc, self._v))
+        return flatten(self._loc, self._v)
 
     @property
     def state_action(self):
-        return tuple(flatten(self._loc, self._v, self.action))
+        return flatten(self._loc, self._v, self.action)
 
     @property
     def reward(self):

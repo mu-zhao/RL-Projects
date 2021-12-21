@@ -2,8 +2,8 @@ from common.config_editor.config_utils import _BASE_DIR
 from common.common_utils import gen_path
 from common.params_editor.params_utils import generate_params
 
-params_id = 1
-episodes = 10000
+params_id = 2
+episodes = 1000
 discount_factor = 0.98
 step_limit = 10000
 speed_limit = 3

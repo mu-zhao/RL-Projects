@@ -35,9 +35,14 @@ def is_json(path):
     return False
 
 
-def flatten(x):
-    return [a for i in x for a in flatten(i)] if isinstance(
-            x, collections.abc.Iterable) else [x]
+def flatten(*args):
+    res = []
+    for i in args:
+        if isinstance(i, collections.abc.Iterable):
+            res.extend(i)
+        else:
+            res.append(i)
+    return tuple(res)
 
 
 def change_keys(old_dict, size, to_int):
@@ -150,7 +155,7 @@ class ParameterValues:
     def update_prediction(self, state_action, target, learning_rate):
         self.parameter[state_action] += learning_rate * (
             target - self.parameter[state_action])
-    
+
     def update_value(self, state_action, value):
         self.parameter[state_action] = value
 
@@ -161,7 +166,7 @@ class ParameterValues:
         return sum(self.parameter[state] * transition_prob)
 
     def expected_return_explore(self, state, explore_rate):
-        return (sum(self.parameter[state]) * explore_rate + 
+        return (sum(self.parameter[state]) * explore_rate +
                 max(self.parameter[state]) * (1 - 5 * explore_rate))
 
     def gen_policy(self, epsilon):
@@ -175,6 +180,7 @@ class ParameterValues:
 
     def max_return(self, state):
         return max(self.parameter[state])
+
 
 class CommonUtils:
     def __init__(self, **kwargs):
@@ -193,6 +199,7 @@ class CommonUtils:
         else:
             obj_dict = load_obj(path, ParameterValues)
         self.__dict__.update(obj_dict)
+
 
 class CommonInfo():
     def __init__(self, params, torus_map):

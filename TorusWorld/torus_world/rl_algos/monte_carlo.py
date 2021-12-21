@@ -1,8 +1,8 @@
-from copy import deepcopy
-from collections import defaultdict
-import numpy as np
-from common.common_utils import ParameterValues
+" Monte Carlo algorithms."
 
+import numpy as np
+
+from common.common_utils import ParameterValues
 from common.algo_utils import Algo
 
 
@@ -18,9 +18,14 @@ class MonteCarlo(Algo):
         self.algo_parameters.state_action = ParameterValues(
             self.state_action_shape, random_start)
 
+    def update(self, ep_info):
+        if ep_info.is_training:
+            self.prediction(ep_info)
+        ep_info.update_episode()
+        ep_info.update_action(self.control(ep_info.state))
+
     def initial_state_action(self):  # non random start
         return super().initial_state(False), super().initial_action(False)
-
 
 
 class FirstVisitMC(MonteCarlo):
@@ -32,12 +37,6 @@ class FirstVisitMC(MonteCarlo):
             self._step_limit)
         self._episode_record = np.zeros(self._step_limit)
         self._first_visit = {}
-   
-    def update(self, ep_info):
-        if ep_info.is_training:
-            self.prediction(ep_info)
-        ep_info.update_episode()
-        ep_info.update_action(self.control(ep_info.state))
 
     def prediction(self, ep_info):
         self._episode_record[ep_info.step] = ep_info.cur_reward
@@ -80,25 +79,25 @@ class OnPolicyMC(FirstVisitMC):
         super().__init__(*args, **kwargs)
         self._exploration = self.hyper_parameters.exploring
 
-
     def control(self, state):
         if np.random.uniform() < self._exploration:
             return np.random.randint(5)
         return super().control(state)
 
+
 class OffPolicyMC(MonteCarlo):
     """ Off policy Monte Carlo, use weight importance sampling
-        Hyper: random_init, (behavior-policy)exploration rate, policy_update_turns
-        trained_episodes, weighted(importance_sampling)
+        Hyper: random_init, (behavior-policy)exploration rate,
+        policy_update_turns, trained_episodes, weighted(importance_sampling)
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._exploration = self.hyper_parameters.exploration
         self._policy_update = self.hyper_parameters.policy_update_turns
         self.algo_parameters.behavior_policy = ParameterValues(
-            self.state_action_shape, random_start=False)
+            self.state_action_shape, random_init=False)
         self._weight = ParameterValues(self.state_action_shape,
-                                       random_start=False)
+                                       random_init=False)
         self._episodes = self.hyper_parameters.trained_episodes
         self._weight_factor = 1
         self._weighted_importance_sampling = self.hyper_parameters.weighted
@@ -109,8 +108,8 @@ class OffPolicyMC(MonteCarlo):
     def update_behavior_policy(self):
         if self._episodes % self._policy_update == 0:
             # TODO: use better ways to reperesent and update behavior policy.
-            self.algo_parameters.behavior_policy.parameter[:]= \
-            self.algo_parameters.state_action.parameter
+            self.algo_parameters.behavior_policy.parameter[:] = (
+                self.algo_parameters.state_action.parameter)
 
     def prediction(self, ep_info):
         self.update_behavior_policy()
@@ -121,7 +120,7 @@ class OffPolicyMC(MonteCarlo):
             weight = 1
             while self._record:
                 his_state_action, his_reward = self._record.pop()
-                # Target = R + lambda * Q(S_(t+1), A_(t+1)) 
+                # Target = R + lambda * Q(S_(t+1), A_(t+1))
                 discouted_reward *= self._discount_factor
                 discouted_reward += his_reward
                 # Learing rate
@@ -129,17 +128,19 @@ class OffPolicyMC(MonteCarlo):
                 learning_rate = weight / self._weight[his_state_action]
 
                 self.algo_parameters.state_action.update_prediction(
-                    his_state_action, discouted_reward, learning_rate) 
-                if not self.algo_parameters.is_best_decision(ep_info.state_action):
-                    break 
+                    his_state_action, discouted_reward, learning_rate)
+                if not self.algo_parameters.is_best_decision(
+                        ep_info.state_action):
+                    break
                 weight *= self._weight_factor
             self._record = []
             self._episodes += 1
-    
+
     def control(self, state):
         if np.random.uniform() < self._exploration:
             return np.random.randint(5)
-        return self._behavior_policy.decision(state)
+        return self.algo_parameters.behavior_policy.decision(state)
+
 
 class FinerOffPolicyMC(OffPolicyMC):
     """ Base class, not functional algo.
@@ -163,17 +164,17 @@ class FinerOffPolicyMC(OffPolicyMC):
         self._his_reward[ep_info.step] = ep_info.cur_reward
         self._his_state_action.append(ep_info.state_action)
         if not self.algo_parameters.state_action.is_best_decision(
-            ep_info.state_action):
+                ep_info.state_action):
             self.is_weight[ep_info.step] = 0
 
     def _update_prediction(self):
         raise NotImplementedError('Must be implemented by subclasses')
-        
+
 
 class DiscoutingAwareIS(FinerOffPolicyMC):
     """ Instead of updating the state value, we update the state-action values
-        Hyper:random_init, (behavior-policy)exploration rate, policy_update_turns
-        trained_episodes. 
+        Hyper:random_init, (behavior-policy)exploration rate,
+        policy_update_turns, trained_episodes.
         reserved attributes: _weight
     """
     def _update_prediction(self, ep_info):
@@ -196,9 +197,9 @@ class DiscoutingAwareIS(FinerOffPolicyMC):
                 1 - self._discout_factor) + dis_aware_rewards[-1]
             # Update prediction
             self.algo_parameters.state_action.update_prediction(
-                his_state_action, discounted_reward, learing_rate)    
+                his_state_action, discounted_reward, learing_rate)
         self._his_state_action = []
-        
+
 
 class PerDecisionMC(FinerOffPolicyMC):
 
@@ -209,9 +210,9 @@ class PerDecisionMC(FinerOffPolicyMC):
             per_decision_reward = sum(is_weights * self._discounting[:len(
                 is_weights)] * self._his_reward[t:ep_info.step])
             # learning rate
-            self._weight[his_state_action] += 1 
+            self._weight[his_state_action] += 1
             learning_rate = 1 / self._weight[his_state_action]
             # Update prediction
             self.algo_parameters.state_action.update_prediction(
-                his_state_action, per_decision_reward, learning_rate)  
+                his_state_action, per_decision_reward, learning_rate)
         self._his_state_action = []

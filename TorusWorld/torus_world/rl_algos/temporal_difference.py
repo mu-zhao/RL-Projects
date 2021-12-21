@@ -1,10 +1,13 @@
-
+"""Temporal difference algorithms. """
 import numpy as np
 
 from common.algo_utils import Algo
 from common.common_utils import ParameterValues, flatten
 
+
 class TemporalDifference(Algo):
+    """
+    """
     def __init__(self, *args, **kwargs):
         """ base TD class
             hyper: random_init, learning_rate
@@ -12,18 +15,16 @@ class TemporalDifference(Algo):
         super().__init__(*args, **kwargs)
         self.state_action_shape = list(self._size)+[
             2 * self._speed_limit + 1] * 2 + [5]
-        self.random_initial= self.hyper_parameters.random_init
+        self.random_initial = self.hyper_parameters.random_init
         self.algo_parameters.state_action = ParameterValues(
             self.state_action_shape, self.random_initial)
         self._alpha = self.hyper_parameters.learning_rate
         self._exploration = self.hyper_parameters.exploration
 
-
-
     def initial_state_action(self):  # non random start
         state_and_action = (super().initial_state(False),
                             super().initial_action(False))
-        self._cur_state_action = tuple(flatten(state_and_action))
+        self._cur_state_action = flatten(state_and_action)
         return state_and_action
 
     def control(self, state):
@@ -46,11 +47,9 @@ class Sarsa(TemporalDifference):
             self.algo_parameters.state_action.reward(next_state_action))
         self.algo_parameters.state_action.update_prediction(
             self._cur_state_action, target, self._alpha)
-    
         episode_info.update_action(action)
         # Update current state_action.
         self._cur_state_action = next_state_action
-
 
 
 class QLearning(TemporalDifference):
@@ -65,6 +64,7 @@ class QLearning(TemporalDifference):
         episode_info.update_action(action)
         # Update current state_action.
         self._cur_state_action = episode_info.state_action
+
 
 class DoubleLearning(TemporalDifference):
     def __init__(self, *args, **kwargs):
@@ -85,7 +85,7 @@ class DoubleLearning(TemporalDifference):
         # Select best action.
         best_action = self.algo_parameters.double_state_actions[
                 first_table].decision(cur_state)
-        state_action4other_table = tuple(flatten(cur_state, best_action))
+        state_action4other_table = flatten(cur_state, best_action)
         # Select target value from the other table
         target = episode_info.cur_reward + self._discount_factor * (
             self.algo_parameters.double_state_actions[
@@ -107,5 +107,6 @@ class DoubleLearning(TemporalDifference):
         # Update current state_action.
         self._cur_state_action = episode_info.state_action
 
+
 class QSigma(TemporalDifference):
-    pass 
+    pass
